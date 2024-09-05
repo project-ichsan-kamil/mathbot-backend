@@ -8,8 +8,8 @@ import { AnswerModule } from './answer/answer.module'; // Import AnswerModule
       type: 'mysql',
       host: 'localhost',
       port: 3306,
-      username: 'root',
-      password: 'root',
+      username: 'mathbot',
+      password: 'Isan02082000!',
       database: 'mathbot',
       synchronize: true,
       autoLoadEntities: true, // autoLoadEntities menghindari kebutuhan untuk mendeklarasikan entitas secara manual
