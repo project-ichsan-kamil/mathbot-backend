@@ -1,12 +1,70 @@
-name: CI/CD Pipeline for NestJS
+# name: CI/CD Pipeline for NestJS
 
+# on:
+#   push:
+#     branches:
+#       - master  # Pipeline akan berjalan saat ada push ke branch "master"
+#   pull_request:
+#     branches:
+#       - master  # Pipeline juga akan berjalan pada pull request ke branch "master"
+
+# jobs:
+#   build-and-deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       # Step 1: Checkout Repository
+#       - name: Checkout the repository
+#         uses: actions/checkout@v2
+
+#       # Step 2: Setup Node.js (versi 20)
+#       - name: Set up Node.js 20
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: '20'
+
+#       # Step 3: Cache Node.js modules untuk mempercepat proses instalasi dependensi
+#       - name: Cache Node.js modules
+#         uses: actions/cache@v2
+#         with:
+#           path: node_modules
+#           key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+#           restore-keys: |
+#             ${{ runner.os }}-node-
+
+#       # Step 4: Install dependencies dengan fallback ke npm install
+#       - name: Install dependencies
+#         run: |
+#           echo "Running npm ci..."
+#           npm ci || (echo "npm ci failed, falling back to npm install..." && npm install)
+
+#       # Step 5: Build project
+#       - name: Build the project
+#         run: |
+#           npm run build
+
+#       # Step 6: Deploy dan Restart PM2 di server
+#       - name: Deploy to Server and Restart PM2
+#         env:
+#           HOST: ${{ secrets.SERVER_HOST }}       # Secret yang berisi IP atau domain server
+#           USER: ${{ secrets.SERVER_USER }}       # Secret yang berisi username server
+#           PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Secret yang berisi private SSH key
+#         run: |
+#           echo "Deploying to server..."
+#           rsync -avz -e "ssh -o StrictHostKeyChecking=no" --exclude node_modules ./ $USER@$HOST:/home/fajrulichsan/mathbot-backend
+
+#           echo "Restarting PM2..."
+#           ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY $USER@$HOST 'cd /home/fajrulichsan/mathbot-backend && npm install && pm2 restart mathbot-backend'
+
+name: CI/CD Pipeline for NestJS
+#test
 on:
   push:
     branches:
-      - master  # Trigger CI/CD saat ada push ke branch "main"
+      - master  # Trigger CI/CD saat ada push ke branch "master"
   pull_request:
     branches:
-      - master  # Trigger juga pada pull request ke branch "main"
+      - master  # Trigger juga pada pull request ke branch "master"
 
 jobs:
   build-and-deploy:
@@ -28,39 +86,49 @@ jobs:
         uses: actions/cache@v2
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('mathbot-backend/package-lock.json') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
-      # Step 4: Install dependencies hanya jika package-lock.json atau package.json berubah
+      # Step 4: Install dependencies dengan fallback ke npm install
       - name: Install dependencies
         run: |
-          cd mathbot-backend
-          if [ -f package-lock.json ]; then
-            echo "Checking if package-lock.json has changed..."
-            diff package-lock.json package-lock.json.old || npm ci
-          else
-            npm install
-          fi
-        continue-on-error: true
+          echo "Running npm ci..."
+          npm ci || (echo "npm ci failed, falling back to npm install..." && npm install)
+
 
       # Step 5: Build project
       - name: Build the project
         run: |
-          cd mathbot-backend
           npm run build
 
-      # Step 6: Deploy dan Restart PM2 di server
+      # Step 6: Test SSH connection to server (Debugging Step)
+      - name: Test SSH connection
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}
+          USER: ${{ secrets.SERVER_USER }}
+          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          echo "Testing SSH connection..."
+          mkdir -p ~/.ssh
+          echo "$PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $USER@$HOST "echo SSH connection successful!"
+
+      # Step 7: Deploy dan Restart PM2 di server
       - name: Deploy to Server and Restart PM2
         env:
-          HOST: ${{ secrets.SERVER_HOST }}       # Secret yang berisi IP atau domain server
-          USER: ${{ secrets.SERVER_USER }}       # Secret yang berisi username server
-          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Secret yang berisi private SSH key
+          HOST: ${{ secrets.SERVER_HOST }}       # IP atau domain server
+          USER: ${{ secrets.SERVER_USER }}       # Username yang benar (misalnya: fajrulichsan)
+          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Private key dari GitHub Secrets
         run: |
           echo "Deploying to server..."
-          ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY $USER@$HOST '
-            rsync -avz --exclude node_modules mathbot-backend /home/$USER/;
-            cd /home/$USER/mathbot-backend;
-            npm install --production;
-            pm2 restart mathbot-backend
-          '
+          mkdir -p ~/.ssh
+          echo "$PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa" --exclude node_modules ./ $USER@$HOST:/home/fajrulichsan/mathbot-backend
+
+          echo "Restarting PM2..."
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa $USER@$HOST 'cd /home/fajrulichsan/mathbot-backend && npm install && pm2 restart mathbot-backend'
+
+
