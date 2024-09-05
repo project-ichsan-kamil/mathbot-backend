@@ -1,0 +1,66 @@
+name: CI/CD Pipeline for NestJS
+
+on:
+  push:
+    branches:
+      - master  # Trigger CI/CD saat ada push ke branch "main"
+  pull_request:
+    branches:
+      - master  # Trigger juga pada pull request ke branch "main"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout Repository
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      # Step 2: Setup Node.js (versi 20)
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'  # Menggunakan Node.js versi 20
+
+      # Step 3: Cache Node.js modules untuk mempercepat proses instalasi dependensi
+      - name: Cache Node.js modules
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('mathbot-backend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # Step 4: Install dependencies hanya jika package-lock.json atau package.json berubah
+      - name: Install dependencies
+        run: |
+          cd mathbot-backend
+          if [ -f package-lock.json ]; then
+            echo "Checking if package-lock.json has changed..."
+            diff package-lock.json package-lock.json.old || npm ci
+          else
+            npm install
+          fi
+        continue-on-error: true
+
+      # Step 5: Build project
+      - name: Build the project
+        run: |
+          cd mathbot-backend
+          npm run build
+
+      # Step 6: Deploy dan Restart PM2 di server
+      - name: Deploy to Server and Restart PM2
+        env:
+          HOST: ${{ secrets.SERVER_HOST }}       # Secret yang berisi IP atau domain server
+          USER: ${{ secrets.SERVER_USER }}       # Secret yang berisi username server
+          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Secret yang berisi private SSH key
+        run: |
+          echo "Deploying to server..."
+          ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY $USER@$HOST '
+            rsync -avz --exclude node_modules mathbot-backend /home/$USER/;
+            cd /home/$USER/mathbot-backend;
+            npm install --production;
+            pm2 restart mathbot-backend
+          '
