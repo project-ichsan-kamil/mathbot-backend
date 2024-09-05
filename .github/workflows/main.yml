@@ -51,7 +51,7 @@ jobs:
           PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Secret yang berisi private SSH key
         run: |
           echo "Deploying to server..."
-          rsync -avz --exclude node_modules ./ $USER@$HOST:/home/fajrulichsan/mathbot-backend
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" --exclude node_modules ./ $USER@$HOST:/home/fajrulichsan/mathbot-backend
 
           echo "Restarting PM2..."
           ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY $USER@$HOST 'cd /home/fajrulichsan/mathbot-backend && npm install && pm2 restart mathbot-backend'
