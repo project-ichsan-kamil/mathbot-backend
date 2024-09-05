@@ -18,6 +18,9 @@ export class Answer {
   @Column({ length: 50 })
   kelas: string;
 
+  @Column({default : 0})
+  score: number;
+
   @Column({
     type: 'enum',
     enum: SoalOption,
