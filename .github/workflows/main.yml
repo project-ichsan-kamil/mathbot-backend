@@ -1,13 +1,12 @@
 name: CI/CD Pipeline for NestJS
 
-# Trigger pipeline pada setiap push atau pull request ke branch "main"
 on:
   push:
     branches:
-      - master  # Trigger CI/CD saat ada push ke branch "main"
+      - master  # Pipeline akan berjalan saat ada push ke branch "main"
   pull_request:
     branches:
-      - master  # Trigger juga pada pull request ke branch "main"
+      - master  # Pipeline juga akan berjalan pada pull request ke branch "main"
 
 jobs:
   build-and-deploy:
@@ -29,26 +28,18 @@ jobs:
         uses: actions/cache@v2
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('mathbot-backend/package-lock.json') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
-      # Step 4: Install dependencies jika package-lock.json berubah
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: |
-          cd mathbot-backend
-          if [ -f package-lock.json ]; then
-            echo "Checking if package-lock.json has changed..."
-            diff package-lock.json package-lock.json.old || npm ci
-          else
-            npm install
-          fi
-        continue-on-error: true
+          npm ci  # Menggunakan npm ci untuk instalasi yang lebih cepat dari package-lock.json
 
       # Step 5: Build project
       - name: Build the project
         run: |
-          cd mathbot-backend
           npm run build
 
       # Step 6: Deploy dan Restart PM2 di server
@@ -59,7 +50,7 @@ jobs:
           PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Secret yang berisi private SSH key
         run: |
           echo "Deploying to server..."
-          rsync -avz --exclude node_modules mathbot-backend $USER@$HOST:/home/fajrulichsan/mathbot-backend/
+          rsync -avz --exclude node_modules ./ $USER@$HOST:/home/fajrulichsan/mathbot-backend
 
           echo "Restarting PM2..."
-          ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY $USER@$HOST 'cd /home/fajrulichsan/mathbot-backend && npm install --production && pm2 restart mathbot-backend'
+          ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY $USER@$HOST 'cd /home/fajrulichsan/mathbot-backend && npm install && pm2 restart mathbot-backend'
