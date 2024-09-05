@@ -1,5 +1,6 @@
 name: CI/CD Pipeline for NestJS
 
+# Trigger pipeline pada setiap push atau pull request ke branch "main"
 on:
   push:
     branches:
@@ -32,7 +33,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      # Step 4: Install dependencies hanya jika package-lock.json atau package.json berubah
+      # Step 4: Install dependencies jika package-lock.json berubah
       - name: Install dependencies
         run: |
           cd mathbot-backend
@@ -58,9 +59,7 @@ jobs:
           PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Secret yang berisi private SSH key
         run: |
           echo "Deploying to server..."
-          ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY $USER@$HOST '
-            rsync -avz --exclude node_modules mathbot-backend /home/$USER/;
-            cd /home/$USER/mathbot-backend;
-            npm install --production;
-            pm2 restart mathbot-backend
-          '
+          rsync -avz --exclude node_modules mathbot-backend $USER@$HOST:/home/fajrulichsan/mathbot-backend/
+
+          echo "Restarting PM2..."
+          ssh -o StrictHostKeyChecking=no -i $PRIVATE_KEY $USER@$HOST 'cd /home/fajrulichsan/mathbot-backend && npm install --production && pm2 restart mathbot-backend'
