@@ -1,26 +1,51 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Answer } from './entities/answer.entity';
 import { CreateAnswerDto } from './dto/create-answer.dto';
-import { UpdateAnswerDto } from './dto/update-answer.dto';
 
 @Injectable()
 export class AnswerService {
-  create(createAnswerDto: CreateAnswerDto) {
-    return 'This action adds a new answer';
+  constructor(
+    @InjectRepository(Answer)
+    private readonly answerRepository: Repository<Answer>,
+  ) {}
+
+  // Create new answer
+  async create(createAnswerDto: CreateAnswerDto): Promise<Answer> {
+    const newAnswer = this.answerRepository.create(createAnswerDto);
+    return this.answerRepository.save(newAnswer);
   }
 
-  findAll() {
-    return `This action returns all answer`;
+  async findAll(name?: string, kelas?: string): Promise<Answer[]> {
+    const query = this.answerRepository.createQueryBuilder('answer');
+    
+    // Tambahkan kondisi untuk hanya mengambil data dengan statusData true
+    query.where('answer.statusData = :status', { status: true });
+
+    // Tambahkan filter untuk pencarian berdasarkan nama
+    if (name) {
+      query.andWhere('answer.nama LIKE :name', { name: `%${name}%` });
+    }
+
+    // Tambahkan filter untuk pencarian berdasarkan kelas
+    if (kelas) {
+      query.andWhere('answer.kelas = :kelas', { kelas });
+    }
+
+    return query.getMany();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} answer`;
-  }
+  async remove(id: number): Promise<void> {
+    const answer = await this.answerRepository.findOne({ where: { id } });
 
-  update(id: number, updateAnswerDto: UpdateAnswerDto) {
-    return `This action updates a #${id} answer`;
-  }
+    if (!answer) {
+      // Jika data tidak ditemukan, lemparkan NotFoundException
+      throw new NotFoundException(`Answer with ID ${id} not found`);
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} answer`;
+    // Jika data ditemukan, ubah statusData menjadi false (soft delete)
+    answer.statusData = false;
+    await this.answerRepository.save(answer); // Simpan perubahan
   }
 }

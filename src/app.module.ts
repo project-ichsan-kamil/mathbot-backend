@@ -1,11 +1,21 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { AnswerModule } from './answer/answer.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AnswerModule } from './answer/answer.module'; // Import AnswerModule
 
 @Module({
-  imports: [AnswerModule],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: 'root',
+      database: 'mathbot',
+      synchronize: true,
+      autoLoadEntities: true, // autoLoadEntities menghindari kebutuhan untuk mendeklarasikan entitas secara manual
+    }),
+    AnswerModule, // Masukkan AnswerModule ke dalam imports
+  ],
 })
 export class AppModule {}
+
