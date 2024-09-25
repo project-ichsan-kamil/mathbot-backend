@@ -99,7 +99,7 @@ export class Answer {
 
   @BeforeInsert()
   generateId() {
-    this.id = Date.now(); // Generate ID based on current timestamp
+    this.id = Date.now();
   }
 
 }
